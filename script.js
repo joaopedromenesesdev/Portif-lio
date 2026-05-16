@@ -1,5 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
   
+  // 0.0 FORCE TOP ON LOAD
+  window.history.scrollRestoration = 'manual';
+  window.scrollTo(0, 0);
+
   // 0. SMOOTH SCROLL (Lenis)
   const lenis = new Lenis({
     duration: 1.2,
