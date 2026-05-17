@@ -922,17 +922,7 @@ header.scrolled {
   transform: scale(1.1);
 }
 
-.project-slide:hover .project-img {
-  animation: glitch-img 0.2s infinite;
-}
 
-@keyframes glitch-img {
-  0% { transform: translate(0) scale(1.1); filter: hue-rotate(0deg); }
-  25% { transform: translate(-2px, 1px) scale(1.1); filter: hue-rotate(90deg) brightness(1.2); }
-  50% { transform: translate(2px, -1px) scale(1.1); filter: hue-rotate(180deg); }
-  75% { transform: translate(-1px, -1px) scale(1.1); filter: hue-rotate(270deg) contrast(1.5); }
-  100% { transform: translate(0) scale(1.1); filter: hue-rotate(360deg); }
-}
 
 .image-overlay {
   position: absolute;
