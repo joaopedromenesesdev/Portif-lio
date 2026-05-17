@@ -459,4 +459,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // 11. FORM SUBMISSION (AJAX)
+  const contactForm = document.getElementById('contactForm');
+  if (contactForm) {
+    contactForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      contactForm.classList.add('is-submitting');
+      contactForm.classList.remove('is-error');
+
+      const formData = new FormData(contactForm);
+
+      try {
+        const response = await fetch(contactForm.action, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          contactForm.classList.remove('is-submitting');
+          contactForm.classList.add('is-success');
+          contactForm.reset();
+          
+          // Efeitos Sonoros de Sucesso
+          playSound(800, 'sine', 0.1);
+          setTimeout(() => playSound(1200, 'sine', 0.2), 150);
+        } else {
+          throw new Error('Falha no envio');
+        }
+      } catch (error) {
+        contactForm.classList.remove('is-submitting');
+        contactForm.classList.add('is-error');
+        playSound(200, 'square', 0.3); // Som de erro
+      }
+    });
+  }
+
 });

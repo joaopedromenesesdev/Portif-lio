@@ -1263,6 +1263,103 @@ header.scrolled {
   cursor: none;
 }
 
+/* FORM SUBMISSION STATES */
+.contact-form.is-submitting .btn-text {
+  display: none;
+}
+.contact-form.is-submitting .loader {
+  display: inline-block;
+}
+.loader {
+  display: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--bg-dark);
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  animation: rotation 1s linear infinite;
+}
+@keyframes rotation {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.form-success, .form-error {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  z-index: 10;
+  text-align: center;
+}
+.contact-form.is-success .form-success {
+  display: flex;
+}
+.contact-form.is-error .form-error {
+  display: flex;
+}
+
+.checkmark {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: block;
+  stroke-width: 2;
+  stroke: var(--primary);
+  stroke-miterlimit: 10;
+  box-shadow: inset 0px 0px 0px var(--primary);
+  animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
+  margin-bottom: 20px;
+}
+.checkmark__circle {
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  stroke-width: 2;
+  stroke-miterlimit: 10;
+  stroke: var(--primary);
+  fill: none;
+  animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+.checkmark__check {
+  transform-origin: 50% 50%;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.6s forwards;
+}
+@keyframes stroke {
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes scale {
+  0%, 100% { transform: none; }
+  50% { transform: scale3d(1.1, 1.1, 1); }
+}
+@keyframes fill {
+  100% { box-shadow: inset 0px 0px 0px 30px rgba(255, 255, 255, 0.05); }
+}
+.form-success p {
+  font-family: var(--font-heading);
+  color: var(--primary);
+  font-size: 1.2rem;
+  letter-spacing: 0.1em;
+  margin: 0;
+  animation: fadeInUp 0.5s ease 0.8s forwards;
+  opacity: 0;
+  transform: translateY(10px);
+}
+.form-error p {
+  font-family: var(--font-heading);
+  color: #ff3333;
+  font-size: 1rem;
+}
+@keyframes fadeInUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* FOOTER */
 footer {
   padding: 60px 0;
@@ -1324,15 +1421,15 @@ footer {
   }
 
   .hero-content {
-    order: 2;
+    order: 1;
   }
 
   .hero-visual {
-    order: 1;
+    order: 2;
     display: flex;
     justify-content: center;
-    margin-top: 60px;
-    margin-bottom: 20px;
+    margin-top: 20px;
+    margin-bottom: 60px;
   }
 
   .hero-description {

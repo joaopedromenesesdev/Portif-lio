@@ -376,7 +376,7 @@
                         </div>
                     </div>
                     <div class="contact-visual">
-                        <form class="contact-form" action="https://formsubmit.co/contato@menese.dev" method="POST">
+                        <form class="contact-form" action="https://formsubmit.co/joaopedromeneses129@gmail.com" method="POST" id="contactForm">
                             <!-- Configurações do Formsubmit -->
                             <input type="hidden" name="_captcha" value="false">
                             <input type="hidden" name="_template" value="box">
@@ -394,7 +394,20 @@
                                 <textarea id="message" name="Mensagem" required placeholder=" " rows="3"></textarea>
                                 <label for="message">MENSAGEM</label>
                             </div>
-                            <button type="submit" class="btn-primary magnetic form-btn">ENVIAR</button>
+                            <button type="submit" class="btn-primary magnetic form-btn" id="submitBtn">
+                                <span class="btn-text">ENVIAR</span>
+                                <span class="loader"></span>
+                            </button>
+                            <div class="form-success" id="formSuccess">
+                                <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                                    <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+                                    <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                                </svg>
+                                <p>MENSAGEM ENVIADA!</p>
+                            </div>
+                            <div class="form-error" id="formError">
+                                <p>Erro no servidor. Tente mais tarde.</p>
+                            </div>
                         </form>
                     </div>
                 </div>
