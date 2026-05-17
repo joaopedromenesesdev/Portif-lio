@@ -36,6 +36,9 @@
         </div>
     </div>
 
+    <!-- SUPERNOVA EFFECT -->
+    <div id="supernova"></div>
+
     <!-- OVERLAYS -->
     <div id="canvas-container"></div>
     <div class="scanlines"></div>
@@ -373,7 +376,26 @@
                         </div>
                     </div>
                     <div class="contact-visual">
-                        <div class="glow-sphere"></div>
+                        <form class="contact-form" action="https://formsubmit.co/contato@menese.dev" method="POST">
+                            <!-- Configurações do Formsubmit -->
+                            <input type="hidden" name="_captcha" value="false">
+                            <input type="hidden" name="_template" value="box">
+                            <input type="hidden" name="_subject" value="Novo contato pelo Portfólio!">
+
+                            <div class="form-group">
+                                <input type="text" id="name" name="Nome" required placeholder=" ">
+                                <label for="name">NOME</label>
+                            </div>
+                            <div class="form-group">
+                                <input type="email" id="email" name="Email" required placeholder=" ">
+                                <label for="email">E-MAIL</label>
+                            </div>
+                            <div class="form-group">
+                                <textarea id="message" name="Mensagem" required placeholder=" " rows="3"></textarea>
+                                <label for="message">MENSAGEM</label>
+                            </div>
+                            <button type="submit" class="btn-primary magnetic form-btn">ENVIAR</button>
+                        </form>
                     </div>
                 </div>
             </div>

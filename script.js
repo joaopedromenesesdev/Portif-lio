@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  
+
   // 0.0 FORCE TOP ON LOAD
   window.history.scrollRestoration = 'manual';
   window.scrollTo(0, 0);
@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function raf(time) {
     lenis.raf(time);
-    
+
     // 0.1.1 PARALLAX UPDATE
     document.querySelectorAll('[data-speed]').forEach(el => {
       const speed = el.getAttribute('data-speed');
@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     container.appendChild(renderer.domElement);
 
     const particlesGeometry = new THREE.BufferGeometry();
-    const particlesCount = 3000; // More stars
+    const particlesCount = 6500; // More stars
     const posArray = new Float32Array(particlesCount * 3);
 
     for (let i = 0; i < particlesCount * 3; i++) {
@@ -55,6 +55,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     camera.position.z = 2;
 
+    // Color Transition Logic for Background
+    const sectionColors = {
+      'home': new THREE.Color(0xffffff),         // Branco/Normal
+      'skills': new THREE.Color(0xa855f7),       // Roxo/Neon
+      'terminal-section': new THREE.Color(0x10b981), // Verde/Terminal
+      'projects': new THREE.Color(0xf97316),     // Laranja
+      'contact': new THREE.Color(0x06b6d4)       // Ciano
+    };
+    let targetBgColor = sectionColors['home'];
+
+    const bgObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        // Altera a cor alvo se a seção está visível na tela
+        if (entry.isIntersecting && sectionColors[entry.target.id]) {
+          targetBgColor = sectionColors[entry.target.id];
+        }
+      });
+    }, { threshold: 0.5 }); // Reage quando 50% da seção estiver na tela
+
+    document.querySelectorAll('section').forEach(sec => bgObserver.observe(sec));
+
     let mouseX = 0;
     let mouseY = 0;
     document.addEventListener('mousemove', (e) => {
@@ -64,25 +85,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const animate = () => {
       requestAnimationFrame(animate);
-      
+
+      // Smooth color transition
+      material.color.lerp(targetBgColor, 0.05);
+
       // Idle rotation
       particlesMesh.rotation.y += 0.0002;
-      
+
       // Mouse reaction
       const targetX = (mouseX - window.innerWidth / 2) * 0.0001;
       const targetY = (mouseY - window.innerHeight / 2) * 0.0001;
       particlesMesh.rotation.y += 0.05 * (targetX - particlesMesh.rotation.y);
       particlesMesh.rotation.x += 0.05 * (targetY - particlesMesh.rotation.x);
 
-      // Scroll reaction (Space Warp effect)
-      const scrollSpeed = window.scrollY * 0.0005;
-      particlesMesh.position.z = scrollSpeed;
+      // Scroll reaction & Supernova Warp
+      if (warpSpeed > 0.001) {
+        warpSpeed *= 0.95; // decay
+        particlesMesh.position.z += warpSpeed;
+
+        // Lens FOV Warp Effect
+        camera.fov = 75 + (warpSpeed * 100);
+        camera.updateProjectionMatrix();
+      } else {
+        const scrollSpeed = window.scrollY * 0.0005;
+        particlesMesh.position.z = scrollSpeed;
+
+        // Restore FOV smoothly
+        if (camera.fov > 75.1) {
+          camera.fov += (75 - camera.fov) * 0.1;
+          camera.updateProjectionMatrix();
+        } else if (camera.fov !== 75) {
+          camera.fov = 75;
+          camera.updateProjectionMatrix();
+        }
+      }
+
       if (particlesMesh.position.z > 5) {
-          particlesMesh.position.z = 0;
+        particlesMesh.position.z %= 5;
       }
 
       renderer.render(scene, camera);
     };
+
+    let warpSpeed = 0;
+    document.addEventListener('supernova', () => {
+      warpSpeed = 0.5;
+    });
     animate();
 
     window.addEventListener('resize', () => {
@@ -159,10 +207,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const preloader = document.getElementById('preloader');
   const bar = document.querySelector('.preloader-bar');
   const percent = document.querySelector('.status-percent');
+  const supernova = document.getElementById('supernova');
   let progress = 0;
 
   const interval = setInterval(() => {
-    progress += Math.random() * 15;
+    progress += Math.random() * 30 + 10; // Load faster
     if (progress > 100) progress = 100;
 
     bar.style.width = `${progress}%`;
@@ -172,10 +221,22 @@ document.addEventListener('DOMContentLoaded', () => {
       clearInterval(interval);
       setTimeout(() => {
         preloader.classList.add('loaded');
-        playSound(800, 'triangle', 0.5, 0.05);
-      }, 500);
+
+        // Supernova effect
+        if (supernova) {
+          supernova.classList.add('explode');
+          document.body.classList.add('supernova-active');
+          document.dispatchEvent(new Event('supernova'));
+
+          // Sound effect for explosion
+          playSound(100, 'square', 1.5, 0.3); // Low frequency rumble
+          setTimeout(() => playSound(800, 'sine', 2.0, 0.1), 100); // Bright high pitch
+        } else {
+          playSound(800, 'triangle', 0.5, 0.05);
+        }
+      }, 100); // Reduced delay before triggering supernova
     }
-  }, 150);
+  }, 220); // Faster interval
 
   // 4. CUSTOM CURSOR & CONTEXTUAL LABELS
   const cursor = document.getElementById('cursor');
@@ -260,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (el.tagName === 'A' || el.tagName === 'BUTTON') {
         setCursor('CLICK');
         if (el.classList.contains('nav-link') || el.classList.contains('section-title')) {
-           scrambleText(el, el.innerText);
+          scrambleText(el, el.innerText);
         }
       }
       if (el.classList.contains('project-slide')) {

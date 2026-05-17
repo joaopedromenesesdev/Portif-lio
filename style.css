@@ -157,12 +157,92 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 1s ease, visibility 1s;
+  transition: opacity 0.4s ease, visibility 0.4s;
 }
 
 #preloader.loaded {
   opacity: 0;
   visibility: hidden;
+}
+
+/* SUPERNOVA EFFECT */
+#supernova {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  width: 100vw;
+  height: 100vw;
+  background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(150,200,255,0.8) 20%, rgba(0,0,0,0) 70%);
+  border-radius: 50%;
+  z-index: 19999;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+}
+
+#supernova::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scaleX(0);
+  width: 100vw;
+  height: 4px;
+  background: rgba(200, 230, 255, 0.9);
+  box-shadow: 0 0 20px 8px rgba(100, 150, 255, 0.7);
+  border-radius: 100%;
+  opacity: 0;
+}
+
+#supernova.explode {
+  animation: supernovaExplosion 3s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
+}
+
+#supernova.explode::after {
+  animation: streakExplosion 3s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes streakExplosion {
+  0% { transform: translate(-50%, -50%) scaleX(0); opacity: 1; }
+  15% { transform: translate(-50%, -50%) scaleX(2); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scaleX(4); opacity: 0; }
+}
+
+@keyframes supernovaExplosion {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 1;
+    filter: brightness(2) contrast(2);
+  }
+  15% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 1;
+    filter: brightness(3) contrast(1.5);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(5);
+    opacity: 0;
+    filter: brightness(1) contrast(1);
+  }
+}
+
+body.supernova-active main {
+  animation: mainCinematic 3s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes mainCinematic {
+  0% {
+    transform: scale(1.15);
+    filter: blur(15px) brightness(3) drop-shadow(-10px 0 0 rgba(255,0,0,0.8)) drop-shadow(10px 0 0 rgba(0,255,255,0.8));
+  }
+  20% {
+    filter: blur(5px) brightness(1.5) drop-shadow(-4px 0 0 rgba(255,0,0,0.4)) drop-shadow(4px 0 0 rgba(0,255,255,0.4));
+  }
+  100% {
+    transform: scale(1);
+    filter: blur(0px) brightness(1) drop-shadow(0px 0 0 rgba(255,0,0,0)) drop-shadow(0px 0 0 rgba(0,255,255,0));
+  }
 }
 
 .preloader-content {
@@ -1097,15 +1177,90 @@ header.scrolled {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
 }
 
-.glow-sphere {
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
-  opacity: 0.2;
-  filter: blur(40px);
-  animation: pulse 4s infinite alternate;
+.contact-form {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 30px;
+  border-radius: 20px;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.contact-form::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+}
+
+.form-group {
+  position: relative;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 15px;
+  color: var(--text-main);
+  font-family: var(--font-main);
+  font-size: 0.9rem;
+  outline: none;
+  transition: var(--transition);
+}
+
+.form-group textarea {
+  resize: none;
+}
+
+.form-group label {
+  position: absolute;
+  left: 15px;
+  top: 15px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  pointer-events: none;
+  transition: 0.3s ease;
+  letter-spacing: 0.1em;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  border-color: var(--primary);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
+}
+
+.form-group input:focus + label,
+.form-group input:not(:placeholder-shown) + label,
+.form-group textarea:focus + label,
+.form-group textarea:not(:placeholder-shown) + label {
+  transform: translateY(-25px) scale(0.85);
+  left: 5px;
+  color: var(--primary);
+}
+
+.form-btn {
+  width: 100%;
+  text-align: center;
+  justify-content: center;
+  margin-top: 10px;
+  cursor: none;
 }
 
 /* FOOTER */
@@ -1210,28 +1365,96 @@ footer {
   }
 
   .contact-visual {
-    display: none;
+    display: block;
+    margin-top: 40px;
+    width: 100%;
   }
 }
 
 @media (max-width: 768px) {
 
-  .nav-desktop,
+  /* Navegação estilo App (Menu inferior) */
+  .nav-desktop {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(3, 5, 8, 0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--glass-border);
+    padding: 15px 10px;
+    justify-content: space-around;
+    gap: 5px;
+    z-index: 9999;
+  }
+
+  .nav-link {
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+  }
+
+  .nav-link::after {
+    display: none; /* Remove a linha animada no mobile */
+  }
+
   .header-cta {
     display: none;
   }
 
   .section {
-    padding: 80px 0;
+    padding: 60px 0;
+  }
+
+  /* Ajustes da Seção Inicial */
+  .hero-container {
+    padding-top: 100px;
   }
 
   .hero-title {
-    font-size: 3.5rem;
+    font-size: 2.5rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+
+  /* Esfera 3D - Evitar scroll horizontal */
+  .tech-sphere {
+    width: 280px;
+    height: 280px;
+  }
+  .orbit-1 { width: 180px; height: 180px; }
+  .orbit-2 { width: 230px; height: 230px; }
+  .orbit-3 { width: 280px; height: 280px; }
+
+  /* Ajustes de Grades */
+  .skills-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .project-image {
+    height: 220px;
+  }
+
+  .contact-card {
+    padding: 30px 20px;
   }
 
   .footer-inner {
     flex-direction: column;
     gap: 20px;
+    padding-bottom: 70px; /* Espaço para o menu inferior não cobrir os links */
+  }
+}
+
+/* Desativar Cursor Personalizado no Celular (Touch) */
+@media (pointer: coarse) {
+  .cursor, .cursor-follower {
+    display: none !important;
+  }
+  body, a, button, input, textarea {
+    cursor: auto !important;
   }
 }
 
