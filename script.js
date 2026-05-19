@@ -418,6 +418,26 @@ document.addEventListener('DOMContentLoaded', () => {
   const slides = document.querySelectorAll('.project-slide');
   const prevBtn = document.getElementById('prevBtn');
   const nextBtn = document.getElementById('nextBtn');
+  const indicatorsContainer = document.getElementById('carouselIndicators');
+  const carouselNav = document.querySelector('.carousel-nav');
+
+  // Dynamically generate dots based on the actual number of slides
+  if (indicatorsContainer) {
+    indicatorsContainer.innerHTML = '';
+    slides.forEach((_, index) => {
+      const dot = document.createElement('span');
+      dot.className = 'dot' + (index === 0 ? ' active' : '');
+      indicatorsContainer.appendChild(dot);
+    });
+  }
+
+  // Hide nav buttons and dots if there is only 1 slide, but keep it visible if there are more
+  if (slides.length <= 1) {
+    if (carouselNav) carouselNav.style.display = 'none';
+  } else {
+    if (carouselNav) carouselNav.style.display = 'flex';
+  }
+
   const dots = document.querySelectorAll('.carousel-indicators .dot');
 
   let currentSlide = 0;
@@ -427,27 +447,32 @@ document.addEventListener('DOMContentLoaded', () => {
     dots.forEach((dot, index) => dot.classList.toggle('active', index === currentSlide));
   };
 
-  nextBtn.addEventListener('click', () => { currentSlide = (currentSlide + 1) % slides.length; updateCarousel(); });
-  prevBtn.addEventListener('click', () => { currentSlide = (currentSlide - 1 + slides.length) % slides.length; updateCarousel(); });
-  dots.forEach((dot, index) => dot.addEventListener('click', () => { currentSlide = index; updateCarousel(); }));
+  // Initialize carousel state immediately
+  updateCarousel();
 
-  // Auto-play
-  let autoPlayInterval = setInterval(() => {
-    currentSlide = (currentSlide + 1) % slides.length;
-    updateCarousel();
-  }, 2000);
+  if (slides.length > 1) {
+    nextBtn.addEventListener('click', () => { currentSlide = (currentSlide + 1) % slides.length; updateCarousel(); });
+    prevBtn.addEventListener('click', () => { currentSlide = (currentSlide - 1 + slides.length) % slides.length; updateCarousel(); });
+    dots.forEach((dot, index) => dot.addEventListener('click', () => { currentSlide = index; updateCarousel(); }));
 
-  // Reset timer on manual interaction
-  const resetTimer = () => {
-    clearInterval(autoPlayInterval);
-    autoPlayInterval = setInterval(() => {
+    // Auto-play
+    let autoPlayInterval = setInterval(() => {
       currentSlide = (currentSlide + 1) % slides.length;
       updateCarousel();
-    }, 4000);
-  };
+    }, 2000);
 
-  [nextBtn, prevBtn].forEach(btn => btn.addEventListener('click', resetTimer));
-  dots.forEach(dot => dot.addEventListener('click', resetTimer));
+    // Reset timer on manual interaction
+    const resetTimer = () => {
+      clearInterval(autoPlayInterval);
+      autoPlayInterval = setInterval(() => {
+        currentSlide = (currentSlide + 1) % slides.length;
+        updateCarousel();
+      }, 4000);
+    };
+
+    [nextBtn, prevBtn].forEach(btn => btn.addEventListener('click', resetTimer));
+    dots.forEach(dot => dot.addEventListener('click', resetTimer));
+  }
 
   const header = document.getElementById('header');
   // 10. SCROLL HEADER STATE
