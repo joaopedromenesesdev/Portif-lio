@@ -4,6 +4,10 @@ document.addEventListener('DOMContentLoaded', () => {
   window.history.scrollRestoration = 'manual';
   window.scrollTo(0, 0);
 
+  const root = document.documentElement;
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const hasFinePointer = window.matchMedia('(pointer: fine)').matches;
+
   // 0. SMOOTH SCROLL (Lenis)
   const lenis = new Lenis({
     duration: 1.2,
@@ -141,33 +145,239 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   initThree();
 
+  // 0.2 LIVING INTERFACE STATE
+  const progressTrack = document.createElement('div');
+  progressTrack.className = 'scroll-progress';
+  progressTrack.setAttribute('aria-hidden', 'true');
+
+  const progressBar = document.createElement('span');
+  progressBar.className = 'scroll-progress__bar';
+  progressTrack.appendChild(progressBar);
+  document.body.prepend(progressTrack);
+
+  const ambientPalette = {
+    home: '255, 255, 255',
+    skills: '168, 85, 247',
+    'terminal-section': '16, 185, 129',
+    projects: '249, 115, 22',
+    contact: '6, 182, 212'
+  };
+
+  const navLinks = document.querySelectorAll('.nav-link');
+  const pageSections = document.querySelectorAll('main section[id]');
+  const sectionVisibility = new Map();
+
+  const setAmbientSection = (id = 'home') => {
+    const color = ambientPalette[id] || ambientPalette.home;
+    root.style.setProperty('--section-rgb', color);
+    document.body.dataset.section = id;
+
+    pageSections.forEach(section => {
+      section.classList.toggle('is-current', section.id === id);
+    });
+
+    navLinks.forEach(link => {
+      link.classList.toggle('is-active', link.getAttribute('href') === `#${id}`);
+    });
+  };
+
+  setAmbientSection('home');
+
+  const sectionStateObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      sectionVisibility.set(entry.target.id, entry.isIntersecting ? entry.intersectionRatio : 0);
+    });
+
+    let activeId = 'home';
+    let activeRatio = 0;
+    sectionVisibility.forEach((ratio, id) => {
+      if (ratio > activeRatio) {
+        activeRatio = ratio;
+        activeId = id;
+      }
+    });
+
+    setAmbientSection(activeId);
+  }, { threshold: [0.2, 0.35, 0.5, 0.7] });
+
+  pageSections.forEach(section => {
+    sectionVisibility.set(section.id, 0);
+    sectionStateObserver.observe(section);
+  });
+
+  const updateScrollProgress = () => {
+    const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    const progress = Math.min(1, Math.max(0, window.scrollY / maxScroll));
+    progressBar.style.transform = `scaleX(${progress})`;
+  };
+
+  updateScrollProgress();
+  window.addEventListener('scroll', updateScrollProgress, { passive: true });
+  window.addEventListener('resize', updateScrollProgress);
+
+  let pointerFrame = null;
+  document.addEventListener('mousemove', (e) => {
+    if (prefersReducedMotion) return;
+    if (pointerFrame) cancelAnimationFrame(pointerFrame);
+    pointerFrame = requestAnimationFrame(() => {
+      root.style.setProperty('--cursor-x', `${e.clientX}px`);
+      root.style.setProperty('--cursor-y', `${e.clientY}px`);
+      pointerFrame = null;
+    });
+  }, { passive: true });
+
   // 1. SOUND SYSTEM (Web Audio API)
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  let isMuted = false;
+  let isMuted = true; // default muted as requested
 
-  const playSound = (freq, type = 'sine', duration = 0.1, vol = 0.1) => {
+  // Improved playSound with ADSR envelope and optional filter for softer, sophisticated sounds
+  const playSound = ({
+    freq = 440,
+    type = 'sine',
+    duration = 0.12,
+    volume = 0.06,
+    attack = 0.005,
+    decay = 0.08,
+    sustain = 0.6,
+    release = 0.12,
+    filterFreq = null,
+    detune = 0
+  } = {}) => {
     if (isMuted) return;
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const now = audioCtx.currentTime;
 
-    oscillator.type = type;
-    oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    const osc = audioCtx.createOscillator();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    if (detune) osc.detune.setValueAtTime(detune, now);
 
-    gainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+    const gain = audioCtx.createGain();
+    const finalGain = audioCtx.createGain();
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
+    // Filter for timbre shaping
+    let filter = null;
+    if (filterFreq) {
+      filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(filterFreq, now);
+    }
 
-    oscillator.start();
-    oscillator.stop(audioCtx.currentTime + duration);
+    // ADSR envelope
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(volume, now + attack);
+    gain.gain.linearRampToValueAtTime(volume * sustain, now + attack + decay);
+    // release scheduled when stopping
+
+    finalGain.gain.setValueAtTime(1, now);
+
+    // routing: osc -> gain -> (filter?) -> finalGain -> destination
+    osc.connect(gain);
+    if (filter) gain.connect(filter), filter.connect(finalGain);
+    else gain.connect(finalGain);
+    finalGain.connect(audioCtx.destination);
+
+    osc.start(now);
+    const stopTime = now + duration + release;
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(volume * sustain, now + duration);
+    gain.gain.linearRampToValueAtTime(0.0001, stopTime);
+    osc.stop(stopTime + 0.02);
+  };
+
+  // Helper sounds with softer character
+  const playSoftClick = () => {
+    playTypingSound({ volume: 0.03, duration: 0.06, filterFreq: 3200 });
+  };
+
+  const playChime = (base = 520) => {
+    // Use a short typing sequence to emulate soft confirmation
+    playTypingSequence(2, 90);
+  };
+
+  const playSuccess = () => {
+    // Longer typing-like confirmation
+    playTypingSequence(4, 80);
+  };
+
+  const playError = () => {
+    // Lower, muted typing-like sound for error
+    playTypingSound({ volume: 0.035, duration: 0.09, filterFreq: 900 });
+  };
+
+  const playSupernova = () => {
+    // layered subtle swell instead of harsh rumble
+    playSound({ freq: 90, type: 'sine', duration: 1.2, volume: 0.07, attack: 0.08, decay: 0.4, sustain: 0.5, release: 0.6, filterFreq: 400 });
+    setTimeout(() => playSound({ freq: 520, type: 'sine', duration: 1.0, volume: 0.03, attack: 0.02, decay: 0.2, sustain: 0.4, release: 0.4, filterFreq: 2500 }), 150);
+  };
+
+  // Typing sound implementation (noise + small click) for a sophisticated keyboard feel
+  let _noiseBuffer = null;
+  const _createNoiseBuffer = () => {
+    const sampleRate = audioCtx.sampleRate;
+    const buffer = audioCtx.createBuffer(1, sampleRate * 1, sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+    return buffer;
+  };
+
+  const playTypingSound = ({ volume = 0.03, duration = 0.06, filterFreq = 3000 } = {}) => {
+    if (isMuted) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const now = audioCtx.currentTime;
+
+    if (!_noiseBuffer) _noiseBuffer = _createNoiseBuffer();
+
+    // Noise burst
+    const noiseSource = audioCtx.createBufferSource();
+    noiseSource.buffer = _noiseBuffer;
+    noiseSource.playbackRate.setValueAtTime(1 + (Math.random() - 0.5) * 0.1, now);
+
+    const bp = audioCtx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(filterFreq + (Math.random() - 0.5) * 400, now);
+    bp.Q.setValueAtTime(1.5, now);
+
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(volume, now + 0.002);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.01);
+
+    noiseSource.connect(bp);
+    bp.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    noiseSource.start(now);
+    noiseSource.stop(now + duration + 0.02);
+
+    // Tiny oscillator click to add a musical character
+    const osc = audioCtx.createOscillator();
+    const oscGain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(1200 + Math.random() * 300, now);
+    oscGain.gain.setValueAtTime(0.0001, now);
+    oscGain.gain.linearRampToValueAtTime(volume * 0.5, now + 0.001);
+    oscGain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.01);
+    osc.connect(oscGain);
+    oscGain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + duration + 0.02);
+  };
+
+  const playTypingSequence = (count = 3, gap = 90) => {
+    for (let i = 0; i < count; i++) {
+      setTimeout(() => playTypingSound({ volume: 0.03, duration: 0.06, filterFreq: 2600 + Math.random() * 1200 }), i * gap + Math.random() * 30);
+    }
   };
 
   const muteToggle = document.getElementById('muteToggle');
+  // initialize mute icon to muted by default
+  if (muteToggle && muteToggle.querySelector('.mute-icon')) muteToggle.querySelector('.mute-icon').textContent = '🔇';
   muteToggle.addEventListener('click', () => {
     isMuted = !isMuted;
     muteToggle.querySelector('.mute-icon').textContent = isMuted ? '🔇' : '🔊';
-    playSound(isMuted ? 200 : 400, 'square');
+    // only play a soft click when unmuting
+    if (!isMuted) playSoftClick();
   });
 
   // 2. LANGUAGE SYSTEM & SCRAMBLE EFFECT
@@ -200,7 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
     currentLang = currentLang === 'PT' ? 'EN' : 'PT';
     langToggle.textContent = currentLang;
     updateLanguage();
-    playSound(600, 'sine', 0.05);
+    playChime(600);
   });
 
   // 3. PRE-LOADER LOGIC
@@ -221,6 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
       clearInterval(interval);
       setTimeout(() => {
         preloader.classList.add('loaded');
+        document.body.classList.add('is-loaded');
 
         // Supernova effect
         if (supernova) {
@@ -228,11 +439,10 @@ document.addEventListener('DOMContentLoaded', () => {
           document.body.classList.add('supernova-active');
           document.dispatchEvent(new Event('supernova'));
 
-          // Sound effect for explosion
-          playSound(100, 'square', 1.5, 0.3); // Low frequency rumble
-          setTimeout(() => playSound(800, 'sine', 2.0, 0.1), 100); // Bright high pitch
+          // Subtle layered supernova sound
+          playSupernova();
         } else {
-          playSound(800, 'triangle', 0.5, 0.05);
+          playChime(800);
         }
       }, 100); // Reduced delay before triggering supernova
     }
@@ -272,22 +482,70 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // 5. MOUSE TRAIL / PARTICLES
-  const createParticle = (x, y) => {
+  const createParticle = (x, y, options = {}) => {
     const p = document.createElement('div');
     p.className = 'particle';
-    const size = Math.random() * 4 + 2;
+    if (options.burst) p.classList.add('burst');
+
+    const size = options.size || Math.random() * 4 + 2;
     p.style.width = `${size}px`;
     p.style.height = `${size}px`;
     p.style.left = `${x}px`;
     p.style.top = `${y}px`;
-    p.style.background = Math.random() > 0.5 ? 'var(--primary)' : 'var(--secondary)';
+    p.style.background = options.color || (Math.random() > 0.5 ? 'rgba(var(--section-rgb), 0.95)' : 'var(--secondary)');
+
+    if (options.burst) {
+      p.style.setProperty('--tx', `${options.tx}px`);
+      p.style.setProperty('--ty', `${options.ty}px`);
+    }
+
     document.body.appendChild(p);
 
-    setTimeout(() => p.remove(), 1000);
+    setTimeout(() => p.remove(), options.burst ? 800 : 1000);
   };
 
   document.addEventListener('mousemove', (e) => {
+    if (prefersReducedMotion || !hasFinePointer) return;
     if (Math.random() > 0.9) createParticle(e.clientX, e.clientY);
+  }, { passive: true });
+
+  document.addEventListener('click', (e) => {
+    if (prefersReducedMotion || !hasFinePointer) return;
+
+    for (let i = 0; i < 10; i++) {
+      const angle = (Math.PI * 2 * i) / 10 + Math.random() * 0.35;
+      const distance = 24 + Math.random() * 42;
+      createParticle(e.clientX, e.clientY, {
+        burst: true,
+        tx: Math.cos(angle) * distance,
+        ty: Math.sin(angle) * distance,
+        size: Math.random() * 3 + 2,
+        color: i % 2 === 0 ? 'rgba(var(--section-rgb), 0.95)' : 'var(--primary)'
+      });
+    }
+  });
+
+  document.querySelectorAll('.magnetic').forEach(el => {
+    el.addEventListener('mousemove', (e) => {
+      const rect = el.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      el.style.setProperty('--magnet-x', `${x}px`);
+      el.style.setProperty('--magnet-y', `${y}px`);
+
+      if (!prefersReducedMotion && hasFinePointer) {
+        const moveX = (x - rect.width / 2) * 0.08;
+        const moveY = (y - rect.height / 2) * 0.12;
+        el.style.transform = `translate(${moveX}px, ${moveY}px)`;
+      }
+    });
+
+    el.addEventListener('mouseleave', () => {
+      el.style.transform = '';
+      el.style.setProperty('--magnet-x', '50%');
+      el.style.setProperty('--magnet-y', '50%');
+    });
   });
 
   // 6. 3D TILT EFFECT
@@ -316,7 +574,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('a, button, .skill-card, .project-slide, .terminal').forEach(el => {
     el.addEventListener('mouseenter', () => {
       follower.classList.add('hover');
-      playSound(1200, 'sine', 0.02, 0.01);
+      playSoftClick();
 
       if (el.tagName === 'A' || el.tagName === 'BUTTON') {
         setCursor('CLICK');
@@ -326,7 +584,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (el.classList.contains('project-slide')) {
         setCursor('VIEW');
-        playSound(400, 'triangle', 0.1, 0.02);
+        playChime(420);
       }
       if (el.classList.contains('terminal')) setCursor('TYPE');
     });
@@ -337,7 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     el.addEventListener('click', () => {
-      playSound(400, 'square', 0.1, 0.05);
+      playSoftClick();
     });
   });
 
@@ -375,7 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       terminalInput.value = '';
       terminalBody.scrollTop = terminalBody.scrollHeight;
-      playSound(300, 'sine', 0.05);
+      playSoftClick();
     }
   });
 
@@ -400,6 +658,13 @@ document.addEventListener('DOMContentLoaded', () => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         entry.target.classList.add('active');
+
+        const delay = Number(entry.target.dataset.delay || 0);
+        setTimeout(() => {
+          entry.target.style.transitionDelay = '';
+          revealObserver.unobserve(entry.target);
+        }, delay * 1000 + 1300);
+
         if (entry.target.classList.contains('skill-card')) {
           const progress = entry.target.querySelector('.skill-progress');
           if (progress) {
@@ -412,7 +677,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }, observerOptions);
 
-  document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+  document.querySelectorAll('.reveal').forEach(el => {
+    const delay = Number(el.dataset.delay || 0);
+    if (delay) el.style.transitionDelay = `${delay}s`;
+    revealObserver.observe(el);
+  });
 
   const carousel = document.getElementById('projectCarousel');
   const slides = document.querySelectorAll('.project-slide');
@@ -510,15 +779,14 @@ document.addEventListener('DOMContentLoaded', () => {
           contactForm.reset();
           
           // Efeitos Sonoros de Sucesso
-          playSound(800, 'sine', 0.1);
-          setTimeout(() => playSound(1200, 'sine', 0.2), 150);
+          playSuccess();
         } else {
           throw new Error('Falha no envio');
         }
       } catch (error) {
         contactForm.classList.remove('is-submitting');
         contactForm.classList.add('is-error');
-        playSound(200, 'square', 0.3); // Som de erro
+        playError(); // Som de erro
       }
     });
   }
